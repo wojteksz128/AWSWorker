@@ -1,15 +1,13 @@
 package com.psoir.projekt;
 
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.services.simpledb.model.ReplaceableAttribute;
-import com.amazonaws.services.sqs.AmazonSQSClient;
-import com.amazonaws.services.sqs.model.DeleteMessageRequest;
-import com.amazonaws.services.sqs.model.GetQueueUrlRequest;
-import com.amazonaws.services.sqs.model.Message;
-import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
+import com.amazonaws.services.sqs.AmazonSQS;
+import com.amazonaws.services.sqs.AmazonSQSClientBuilder;
+import com.amazonaws.services.sqs.model.*;
 import org.joda.time.DateTime;
-
+import com.amazonaws.regions.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,34 +15,45 @@ public class SqsListener {
 
 
 	public static final String DATE = "Date";
-	private static final String ITEM_NAME = "Item_Name";
-	public static final String HTTPS_SQS_EU_CENTRAL_1_AMAZONAWS_COM = "https://sqs.eu-central-1.amazonaws.com/938778484620/arwspsoirsqs";
 	public static final String ITEM = "Item";
-	private final String queName;
-	private final AmazonSQSClient sqs;
 	private final ImageEditor imageEditor;
+	private final CreateQueueRequest createQueueRequest;
+	private final ProfileCredentialsProvider credentialsProvider = new ProfileCredentialsProvider();
+	private final AmazonSQS sqs;
+
 
 	public SqsListener() {
-		AWSCredentials credentials = new BasicAWSCredentials("",
-				"");
-		this.queName = "arwspsoirsqs";
-		this.sqs = new AmazonSQSClient(credentials);
-		this.sqs.setEndpoint(HTTPS_SQS_EU_CENTRAL_1_AMAZONAWS_COM);
-		this.imageEditor = new ImageEditor(credentials);
+		try {
+			credentialsProvider.getCredentials();
+		} catch (Exception e) {
+			throw new AmazonClientException(
+					"Cannot load the credentials from the credential profiles file. " +
+							"Please make sure that your credentials file is at the correct " +
+							"location (~/.aws/credentials), and is in valid format.",
+					e);
+		}
+
+		sqs = AmazonSQSClientBuilder.standard()
+							.withCredentials(credentialsProvider)
+							.withRegion(Regions.EU_CENTRAL_1)
+							.build();
+
+		createQueueRequest = new CreateQueueRequest("arwspsoirsqs");
+		this.imageEditor = new ImageEditor(credentialsProvider.getCredentials());
 
 
 	}
 
 	public void listen() throws InterruptedException {
 		while (true) {
-			List<Message> messagesFromQueue = getMessagesFromQueue(getQueueUrl(this.queName));
+			List<Message> messagesFromQueue = getMessagesFromQueue(getQueueUrl());
 			if (messagesFromQueue.size() > 0) {
 				Message message = messagesFromQueue.get(0);
 				List<ReplaceableAttribute> attributes = new ArrayList<>();
 				attributes.add(new ReplaceableAttribute().withName(ITEM).withValue(message.getBody()));
 				attributes.add(new ReplaceableAttribute().withName(DATE).withValue(DateTime.now().toString()));
 				imageEditor.rotateImage(message.getBody());
-				deleteMessageFromQueue(getQueueUrl(this.queName), message);
+				deleteMessageFromQueue(getQueueUrl(), message);
 
 			} else {
 				Thread.sleep(2000);
@@ -59,9 +68,8 @@ public class SqsListener {
 
 	}
 
-	private String getQueueUrl(String queueName) {
-		GetQueueUrlRequest getQueueUrlRequest = new GetQueueUrlRequest(queueName);
-		return this.sqs.getQueueUrl(getQueueUrlRequest).getQueueUrl();
+	private String getQueueUrl() {
+		return sqs.createQueue(createQueueRequest).getQueueUrl();
 	}
 
 	private void deleteMessageFromQueue(String queueUrl, Message message) {

@@ -11,19 +11,23 @@ import java.time.LocalDateTime;
 import javax.imageio.ImageIO;
 
 import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.util.IOUtils;
 
 public class ImageEditor {
 
-	public static final String DIRECTORY = "zdjecia/";
-	private final AmazonS3Client amazonS3Client;
+
+	private final AmazonS3 amazonS3Client;
 	private final String bucketName = "arwspsoirbucket";
 
 	public ImageEditor(AWSCredentials credentials) {
-		this.amazonS3Client = new AmazonS3Client(credentials);
+        this.amazonS3Client = AmazonS3ClientBuilder.standard().withCredentials(new AWSStaticCredentialsProvider(credentials))
+        .withRegion(Regions.EU_CENTRAL_1).build();
 	}
 
 	public void rotateImage(String imageName) {
