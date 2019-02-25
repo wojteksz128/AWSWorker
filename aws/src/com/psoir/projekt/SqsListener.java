@@ -38,7 +38,7 @@ public class SqsListener {
 							.withRegion(Regions.EU_CENTRAL_1)
 							.build();
 
-		createQueueRequest = new CreateQueueRequest("arwspsoirsqs");
+		createQueueRequest = new CreateQueueRequest("psoir_test_queue");
 		this.imageEditor = new ImageEditor(credentialsProvider.getCredentials());
 
 
@@ -47,12 +47,21 @@ public class SqsListener {
 	public void listen() throws InterruptedException {
 		while (true) {
 			List<Message> messagesFromQueue = getMessagesFromQueue(getQueueUrl());
-			if (messagesFromQueue.size() > 0) {
-				Message message = messagesFromQueue.get(0);
-				List<ReplaceableAttribute> attributes = new ArrayList<>();
-				attributes.add(new ReplaceableAttribute().withName(ITEM).withValue(message.getBody()));
-				attributes.add(new ReplaceableAttribute().withName(DATE).withValue(DateTime.now().toString()));
-				imageEditor.rotateImage(message.getBody());
+
+				if (messagesFromQueue.size() > 0) {
+
+						Message message = messagesFromQueue.get(0);
+					try {
+						List<ReplaceableAttribute> attributes = new ArrayList<>();
+						attributes.add(new ReplaceableAttribute().withName(ITEM).withValue(message.getBody()));
+						attributes.add(new ReplaceableAttribute().withName(DATE).withValue(DateTime.now().toString()));
+						imageEditor.rotateImage(message.getBody());
+					} catch (Exception e)
+					{
+						e.getCause();
+						e.getStackTrace();
+						deleteMessageFromQueue(getQueueUrl(), message);
+					}
 				deleteMessageFromQueue(getQueueUrl(), message);
 
 			} else {

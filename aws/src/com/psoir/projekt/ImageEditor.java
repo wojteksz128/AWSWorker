@@ -23,7 +23,7 @@ public class ImageEditor {
 
 
 	private final AmazonS3 amazonS3Client;
-	private final String bucketName = "arwspsoirbucket";
+	private final String bucketName = "psoir-test-bucket";
 
 	public ImageEditor(AWSCredentials credentials) {
         this.amazonS3Client = AmazonS3ClientBuilder.standard().withCredentials(new AWSStaticCredentialsProvider(credentials))
